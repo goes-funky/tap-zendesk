@@ -27,5 +27,13 @@ def discover_streams(client):
     for s in STREAMS.values():
         s = s(client)
         schema = singer.resolve_schema_references(s.load_schema(), refs)
-        streams.append({'stream': s.name, 'tap_stream_id': s.name, 'schema': schema, 'metadata': s.load_metadata()})
+        streams.append({
+            'stream': s.name,
+            'tap_stream_id': s.name,
+            'schema': schema,
+            'metadata': s.load_metadata(),
+            'key_properties': s.key_properties,
+            'replication_key': s.replication_key,
+            'replication_method': s.replication_method
+        })
     return streams
