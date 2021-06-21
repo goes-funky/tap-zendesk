@@ -1,5 +1,11 @@
 {
   "properties": {
+    "generated_timestamp": {
+      "type": [
+        "null",
+        "integer"
+      ]
+    },
     "metric": {
       "type": [
         "null",

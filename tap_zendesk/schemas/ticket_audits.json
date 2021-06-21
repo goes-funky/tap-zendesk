@@ -4,6 +4,12 @@
     "object"
   ],
   "properties": {
+    "generated_timestamp": {
+      "type": [
+        "null",
+        "integer"
+      ]
+    },
     "events": {
       "type": [
         "null",
