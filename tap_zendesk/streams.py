@@ -291,9 +291,10 @@ class TicketComments(Tickets):
         tickets = self.client.tickets.incremental(start_time=bookmark)
         for ticket in tickets:
             ticket = ticket.to_dict()
-            ticket_comments = self.client.tickets.comments(ticket=ticket["id"])
-            for ticket_comment in ticket_comments:
-                yield from self.push_ticket_child(state, ticket, ticket_comment)
+            if ticket["status"] != "deleted":  # Only comments of undeleted tickets can be retrieved.
+                ticket_comments = self.client.tickets.comments(ticket=ticket["id"])
+                for ticket_comment in ticket_comments:
+                    yield from self.push_ticket_child(state, ticket, ticket_comment)
 
 
 class SatisfactionRatings(Stream):
