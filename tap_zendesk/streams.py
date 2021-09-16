@@ -262,9 +262,10 @@ class TicketAudits(Tickets):
         tickets = self.client.tickets.incremental(start_time=bookmark)
         for ticket in tickets:
             ticket = ticket.to_dict()
-            ticket_audits = self.client.tickets.audits(ticket=ticket["id"])
-            for ticket_audit in ticket_audits:
-                yield from self.push_ticket_child(state, ticket, ticket_audit)
+            if ticket["status"] != "deleted":  # Only audits of undeleted tickets can be retrieved.
+                ticket_audits = self.client.tickets.audits(ticket=ticket["id"])
+                for ticket_audit in ticket_audits:
+                    yield from self.push_ticket_child(state, ticket, ticket_audit)
 
 
 class TicketMetrics(Tickets):
