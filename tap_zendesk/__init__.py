@@ -4,7 +4,7 @@ import sys
 
 import requests
 import singer
-from requests.adapters import HTTPAdapter
+from requests.adapters import HTTPAdapter, Retry
 from singer import metadata
 from zenpy import Zenpy
 
@@ -94,6 +94,8 @@ def get_session(config):
     session.headers["X-Zendesk-Marketplace-Name"] = config.get("marketplace_name", "")
     session.headers["X-Zendesk-Marketplace-Organization-Id"] = str(config.get("marketplace_organization_id", ""))
     session.headers["X-Zendesk-Marketplace-App-Id"] = str(config.get("marketplace_app_id", ""))
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
+    session.mount('https://', HTTPAdapter(max_retries=retries))
     return session
 
 
