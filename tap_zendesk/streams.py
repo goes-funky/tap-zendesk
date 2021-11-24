@@ -240,15 +240,18 @@ class Tickets(Stream):
 
     def sync(self, state):
         bookmark = self.get_bookmark(state)
+        ids = []
         tickets = self.client.tickets.incremental(start_time=bookmark)
 
         for ticket in tickets:
             generated_timestamp_dt = datetime.datetime.utcfromtimestamp(ticket.generated_timestamp).replace(tzinfo=pytz.UTC) + datetime.timedelta(seconds=1)
             self.update_bookmark(state, utils.strftime(generated_timestamp_dt))
-
             ticket = ticket.to_dict()
-            ticket.pop('fields')  # NB: Fields is a duplicate of custom_fields, remove before emitting
-            yield self.stream, ticket
+            if ticket["id"] not in ids:
+                # avoid duplicate records because of zenpy package pagination issue
+                ids.append(ticket["id"])
+                ticket.pop('fields')  # NB: Fields is a duplicate of custom_fields, remove before emitting
+                yield self.stream, ticket
 
 
 class TicketAudits(Tickets):
