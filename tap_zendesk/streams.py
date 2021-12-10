@@ -283,8 +283,8 @@ class TicketMetrics(Tickets):
         tickets = self.client.tickets.incremental(start_time=bookmark)
         ids = []
         for ticket in tickets:
+            ticket = ticket.to_dict()
             if ticket["id"] not in ids:
-                ticket = ticket.to_dict()
                 ids.append(ticket["id"])
                 ticket_metric = self.client.tickets.metrics(ticket=ticket["id"])
                 yield from self.push_ticket_child(state, ticket, ticket_metric)
