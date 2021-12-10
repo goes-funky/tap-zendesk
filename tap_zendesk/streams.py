@@ -263,10 +263,12 @@ class TicketAudits(Tickets):
     def sync(self, state):
         bookmark = self.get_bookmark(state)
         tickets = self.client.tickets.incremental(start_time=bookmark)
+        ids = []
         for ticket in tickets:
             ticket = ticket.to_dict()
-            if ticket["status"] != "deleted":  # Only audits of undeleted tickets can be retrieved.
+            if ticket["status"] != "deleted" and ticket["id"] not in ids:  # Only audits of undeleted tickets can be retrieved.
                 ticket_audits = self.client.tickets.audits(ticket=ticket["id"])
+                ids.append(ticket["id"])
                 for ticket_audit in ticket_audits:
                     yield from self.push_ticket_child(state, ticket, ticket_audit)
 
@@ -279,10 +281,13 @@ class TicketMetrics(Tickets):
     def sync(self, state):
         bookmark = self.get_bookmark(state)
         tickets = self.client.tickets.incremental(start_time=bookmark)
+        ids = []
         for ticket in tickets:
-            ticket = ticket.to_dict()
-            ticket_metric = self.client.tickets.metrics(ticket=ticket["id"])
-            yield from self.push_ticket_child(state, ticket, ticket_metric)
+            if ticket["id"] not in ids:
+                ticket = ticket.to_dict()
+                ids.append(ticket["id"])
+                ticket_metric = self.client.tickets.metrics(ticket=ticket["id"])
+                yield from self.push_ticket_child(state, ticket, ticket_metric)
 
 
 class TicketComments(Tickets):
@@ -293,10 +298,12 @@ class TicketComments(Tickets):
     def sync(self, state):
         bookmark = self.get_bookmark(state)
         tickets = self.client.tickets.incremental(start_time=bookmark)
+        ids = []
         for ticket in tickets:
             ticket = ticket.to_dict()
-            if ticket["status"] != "deleted":  # Only comments of undeleted tickets can be retrieved.
+            if ticket["status"] != "deleted" and ticket["id"] not in ids:  # Only comments of undeleted tickets can be retrieved.
                 ticket_comments = self.client.tickets.comments(ticket=ticket["id"])
+                ids.append(ticket["id"])
                 for ticket_comment in ticket_comments:
                     yield from self.push_ticket_child(state, ticket, ticket_comment)
 
