@@ -93,15 +93,17 @@ class CustomAdapter(HTTPAdapter):
 def get_session(config):
     """ Add partner information to requests Session object if specified in the config. """
 
+    # To use the Zenpy's default adapter args, following the method outlined here:
+    # https://github.com/facetoe/zenpy/blob/master/docs/zenpy.rst#usage
+
     session = requests.Session()
-    retries = Retry(total=20, backoff_factor=1, status_forcelist=[502, 503, 504, 520, 500], connect=20, read=20)
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504, 520, 500], connect=5, read=5)
     session.mount('https://', CustomAdapter(max_retries=retries))
 
     if all(k in config for k in ["marketplace_name",
                                  "marketplace_organization_id",
                                  "marketplace_app_id"]):
-        # Using Zenpy's default adapter args, following the method outlined here:
-        # https://github.com/facetoe/zenpy/blob/master/docs/zenpy.rst#usage
+
         session.headers["X-Zendesk-Marketplace-Name"] = config.get("marketplace_name", "")
         session.headers["X-Zendesk-Marketplace-Organization-Id"] = str(config.get("marketplace_organization_id", ""))
         session.headers["X-Zendesk-Marketplace-App-Id"] = str(config.get("marketplace_app_id", ""))
