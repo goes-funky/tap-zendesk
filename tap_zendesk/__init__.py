@@ -97,7 +97,7 @@ def get_session(config):
     # https://github.com/facetoe/zenpy/blob/master/docs/zenpy.rst#usage
 
     session = requests.Session()
-    retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504, 520, 500], connect=5, read=5)
+    retries = Retry(total=5, backoff_factor=10, status_forcelist=[502, 503, 504, 520, 500], connect=5, read=5)
     session.mount('https://', CustomAdapter(max_retries=retries))
 
     if all(k in config for k in ["marketplace_name",
