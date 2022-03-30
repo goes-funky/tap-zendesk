@@ -264,13 +264,17 @@ class TicketAudits(Tickets):
         bookmark = self.get_bookmark(state)
         tickets = self.client.tickets.incremental(start_time=bookmark)
         ids = []
+        ticket_count = 0
         for ticket in tickets:
+            if ticket_count % 100 == 0:
+                LOGGER.info("Pushed audit records for %s tickets", ticket_count)
             ticket = ticket.to_dict()
             if ticket["status"] != "deleted" and ticket["id"] not in ids:  # Only audits of undeleted tickets can be retrieved.
                 ticket_audits = self.client.tickets.audits(ticket=ticket["id"])
                 ids.append(ticket["id"])
                 for ticket_audit in ticket_audits:
                     yield from self.push_ticket_child(state, ticket, ticket_audit)
+            ticket_count += 1
 
 
 class TicketMetrics(Tickets):
@@ -282,12 +286,16 @@ class TicketMetrics(Tickets):
         bookmark = self.get_bookmark(state)
         tickets = self.client.tickets.incremental(start_time=bookmark)
         ids = []
+        ticket_count = 0
         for ticket in tickets:
+            if ticket_count % 100 == 0:
+                LOGGER.info("Pushed metrics records for %s tickets", ticket_count)
             ticket = ticket.to_dict()
             if ticket["id"] not in ids:
                 ids.append(ticket["id"])
                 ticket_metric = self.client.tickets.metrics(ticket=ticket["id"])
                 yield from self.push_ticket_child(state, ticket, ticket_metric)
+            ticket_count += 1
 
 
 class TicketComments(Tickets):
@@ -299,14 +307,17 @@ class TicketComments(Tickets):
         bookmark = self.get_bookmark(state)
         tickets = self.client.tickets.incremental(start_time=bookmark)
         ids = []
+        ticket_count = 0
         for ticket in tickets:
+            if ticket_count % 100 == 0:
+                LOGGER.info("Pushed comments records for %s tickets", ticket_count)
             ticket = ticket.to_dict()
             if ticket["status"] != "deleted" and ticket["id"] not in ids:  # Only comments of undeleted tickets can be retrieved.
                 ticket_comments = self.client.tickets.comments(ticket=ticket["id"])
                 ids.append(ticket["id"])
                 for ticket_comment in ticket_comments:
                     yield from self.push_ticket_child(state, ticket, ticket_comment)
-
+            ticket_count += 1
 
 class SatisfactionRatings(Stream):
     name = "satisfaction_ratings"

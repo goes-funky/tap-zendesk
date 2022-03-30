@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import json
 import sys
+from typing import Union, Tuple, Text, Container, Optional, Mapping
 
 import requests
 import singer
+from requests import PreparedRequest, Response
 from requests.adapters import HTTPAdapter, Retry
 from singer import metadata
 from zenpy import Zenpy
@@ -81,21 +83,31 @@ def api_token_auth(args):
     }
 
 
+class CustomAdapter(HTTPAdapter):
+
+    def send(self, request: PreparedRequest, stream: bool = ..., timeout: Union[None, float, Tuple[float, float], Tuple[float, None]] = ..., verify: Union[bool, str] = ..., cert: Union[None, Union[bytes, Text], Container[Union[bytes, Text]]] = ..., proxies: Optional[Mapping[str, str]] = ...) -> Response:
+        response = super().send(request, stream, timeout, verify, cert, proxies)
+        return response
+
+
 def get_session(config):
     """ Add partner information to requests Session object if specified in the config. """
-    if not all(k in config for k in ["marketplace_name",
-                                     "marketplace_organization_id",
-                                     "marketplace_app_id"]):
-        return None
-    session = requests.Session()
-    # Using Zenpy's default adapter args, following the method outlined here:
+
+    # To use the Zenpy's default adapter args, following the method outlined here:
     # https://github.com/facetoe/zenpy/blob/master/docs/zenpy.rst#usage
-    session.mount("https://", HTTPAdapter(**Zenpy.http_adapter_kwargs()))
-    session.headers["X-Zendesk-Marketplace-Name"] = config.get("marketplace_name", "")
-    session.headers["X-Zendesk-Marketplace-Organization-Id"] = str(config.get("marketplace_organization_id", ""))
-    session.headers["X-Zendesk-Marketplace-App-Id"] = str(config.get("marketplace_app_id", ""))
-    retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504, 520])
-    session.mount('https://', HTTPAdapter(max_retries=retries))
+
+    session = requests.Session()
+    retries = Retry(total=5, backoff_factor=10, status_forcelist=[502, 503, 504, 520, 500], connect=5, read=5)
+    session.mount('https://', CustomAdapter(max_retries=retries))
+
+    if all(k in config for k in ["marketplace_name",
+                                 "marketplace_organization_id",
+                                 "marketplace_app_id"]):
+
+        session.headers["X-Zendesk-Marketplace-Name"] = config.get("marketplace_name", "")
+        session.headers["X-Zendesk-Marketplace-Organization-Id"] = str(config.get("marketplace_organization_id", ""))
+        session.headers["X-Zendesk-Marketplace-App-Id"] = str(config.get("marketplace_app_id", ""))
+
     return session
 
 
