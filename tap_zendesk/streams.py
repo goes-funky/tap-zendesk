@@ -293,8 +293,11 @@ class TicketMetrics(Tickets):
             ticket = ticket.to_dict()
             if ticket["id"] not in ids:
                 ids.append(ticket["id"])
-                ticket_metric = self.client.tickets.metrics(ticket=ticket["id"])
-                yield from self.push_ticket_child(state, ticket, ticket_metric)
+                try:
+                    ticket_metric = self.client.tickets.metrics(ticket=ticket["id"])
+                    yield from self.push_ticket_child(state, ticket, ticket_metric)
+                except Exception as e:
+                    LOGGER.warning("Ticket not found")
             ticket_count += 1
 
 
