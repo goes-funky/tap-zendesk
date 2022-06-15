@@ -106,6 +106,10 @@ class Stream:
     def is_selected(self):
         return self.stream is not None
 
+    def push_state(self, state):
+        state['partial'] = {'partial': True, 'resume': True}
+        singer.write_state(state)
+
 
 def raise_or_log_zenpy_apiexception(schema, stream, e):
     # There are multiple tiers of Zendesk accounts. Some of them have
@@ -149,6 +153,7 @@ class Organizations(Stream):
             bookmark = datetime.datetime.strptime(organization.updated_at, DATETIME_FORMAT) + datetime.timedelta(seconds=1)
             self.update_bookmark(state, bookmark.strftime(DATETIME_FORMAT))
             yield self.stream, organization
+        self.push_state(state)
 
 
 class Users(Stream):
@@ -217,7 +222,7 @@ class Users(Stream):
             self.update_bookmark(state, parsed_end)
 
             # Assumes that the for loop got everything
-            singer.write_state(state)
+            self.push_state(state)
             if search_window_size <= original_search_window_size // 2:
                 search_window_size = search_window_size * 2
                 LOGGER.info("Successfully requested records. Doubling search window to %s seconds", search_window_size)
@@ -252,6 +257,7 @@ class Tickets(Stream):
                 ids.append(ticket["id"])
                 ticket.pop('fields')  # NB: Fields is a duplicate of custom_fields, remove before emitting
                 yield self.stream, ticket
+        self.push_state(state)
 
 
 class TicketAudits(Tickets):
@@ -276,6 +282,9 @@ class TicketAudits(Tickets):
                     yield from self.push_ticket_child(state, ticket, ticket_audit)
             ticket_count += 1
 
+        self.update_bookmark(state, ticket['updated_at'])
+        self.push_state(state)
+
 
 class TicketMetrics(Tickets):
     name = "ticket_metrics"
@@ -299,6 +308,8 @@ class TicketMetrics(Tickets):
                 except Exception as e:
                     LOGGER.warning("Ticket not found")
             ticket_count += 1
+        self.update_bookmark(state, ticket['updated_at'])
+        self.push_state(state)
 
 
 class TicketComments(Tickets):
@@ -321,6 +332,10 @@ class TicketComments(Tickets):
                 for ticket_comment in ticket_comments:
                     yield from self.push_ticket_child(state, ticket, ticket_comment)
             ticket_count += 1
+        generated_timestamp_dt = datetime.datetime.utcfromtimestamp(ticket['generated_timestamp']).replace(
+            tzinfo=pytz.UTC) + datetime.timedelta(seconds=1)
+        self.update_bookmark(state, utils.strftime(generated_timestamp_dt))
+        self.push_state(state)
 
 class SatisfactionRatings(Stream):
     name = "satisfaction_ratings"
@@ -367,7 +382,7 @@ class SatisfactionRatings(Stream):
             if search_window_size <= original_search_window_size // 2:
                 search_window_size = search_window_size * 2
                 LOGGER.info("Successfully requested records. Doubling search window to %s seconds", search_window_size)
-            singer.write_state(state)
+            self.push_state(state)
 
             start = end - datetime.timedelta(seconds=1)
             end = start + datetime.timedelta(seconds=search_window_size)
@@ -389,6 +404,7 @@ class Groups(Stream):
                 # so we can't save state until we've seen all records
                 self.update_bookmark(state, group.updated_at)
                 yield self.stream, group
+        self.push_state(state)
 
 
 class Macros(Stream):
@@ -407,7 +423,7 @@ class Macros(Stream):
                 # so we can't save state until we've seen all records
                 self.update_bookmark(state, macro.updated_at)
                 yield (self.stream, macro)
-
+        self.push_state(state)
 
 class Tags(Stream):
     name = "tags"
@@ -438,6 +454,7 @@ class TicketFields(Stream):
                 # so we can't save state until we've seen all records
                 self.update_bookmark(state, field.updated_at)
                 yield (self.stream, field)
+        self.push_state(state)
 
 
 class TicketForms(Stream):
@@ -456,6 +473,7 @@ class TicketForms(Stream):
                 # so we can't save state until we've seen all records
                 self.update_bookmark(state, form.updated_at)
                 yield (self.stream, form)
+        self.push_state(state)
 
 
 class GroupMemberships(Stream):
@@ -475,7 +493,8 @@ class GroupMemberships(Stream):
                     # updated_at (we've observed out-of-order records),
                     # so we can't save state until we've seen all records
                     self.update_bookmark(state, membership.updated_at)
-                    yield (self.stream, membership)
+                yield (self.stream, membership)
+
             else:
                 if membership.id:
                     LOGGER.info('group_membership record with id: ' + str(membership.id) +
@@ -483,8 +502,8 @@ class GroupMemberships(Stream):
                     yield (self.stream, membership)
                 else:
                     LOGGER.info('Received group_membership record with no id or updated_at, skipping...')
-
-
+        if membership.updated_at:
+            self.push_state(state)
 class SLAPolicies(Stream):
     name = "sla_policies"
     replication_method = "FULL_TABLE"
