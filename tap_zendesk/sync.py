@@ -28,12 +28,19 @@ def sync_stream(state, start_date, instance):
                               start_date)
 
     with Transformer() as transformer:
+        counter = 0
         for (stream, record) in instance.sync(state):
             rec = process_record(record)
             # SCHEMA_GEN: Comment out transform
             rec = transformer.transform(rec, stream.schema.to_dict(), metadata.to_map(stream.metadata))
 
             singer.write_record(stream.tap_stream_id, rec)
+
+            if instance.replication_method == "INCREMENTAL":
+                counter += 1
+            if counter == 1000:
+                counter = 0
+                singer.write_state(state)
             # NB: We will only write state at the end of a stream's sync:
             #  We may find out that there exists a sync that takes too long and can never emit a bookmark
             #  but we don't know if we can guarantee the order of emitted records.
