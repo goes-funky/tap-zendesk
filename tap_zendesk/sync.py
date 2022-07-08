@@ -29,6 +29,7 @@ def sync_stream(state, start_date, instance):
 
     with Transformer() as transformer:
         counter = 0
+        stream_list = ['users', "group_memberships", 'groups', 'macros', 'satisfaction_ratings']
         for (stream, record) in instance.sync(state):
             rec = process_record(record)
             # SCHEMA_GEN: Comment out transform
@@ -36,7 +37,7 @@ def sync_stream(state, start_date, instance):
 
             singer.write_record(stream.tap_stream_id, rec)
 
-            if instance.replication_method == "INCREMENTAL":
+            if instance.replication_method == "INCREMENTAL" and stream.tap_stream_id in stream_list:
                 counter += 1
             if counter == 1000:
                 counter = 0

@@ -107,7 +107,6 @@ class Stream:
         return self.stream is not None
 
     def push_state(self, state):
-        state['partial'] = {'partial': True, 'resume': True}
         singer.write_state(state)
 
 
@@ -153,7 +152,6 @@ class Organizations(Stream):
             bookmark = datetime.datetime.strptime(organization.updated_at, DATETIME_FORMAT) + datetime.timedelta(seconds=1)
             self.update_bookmark(state, bookmark.strftime(DATETIME_FORMAT))
             yield self.stream, organization
-        self.push_state(state)
 
 
 class Users(Stream):
@@ -479,7 +477,7 @@ class GroupMemberships(Stream):
                     # updated_at (we've observed out-of-order records),
                     # so we can't save state until we've seen all records
                     self.update_bookmark(state, membership.updated_at)
-                yield (self.stream, membership)
+                    yield (self.stream, membership)
 
             else:
                 if membership.id:
